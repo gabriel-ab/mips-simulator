@@ -1,10 +1,26 @@
 from mips_simulator import interpreter
+import json
 import os
 
 files = os.listdir('input')
 for file in files:
     with open(os.path.join('input', file)) as f:
-        input = f.read()
-    output = interpreter.translate(input)
-    with open(os.path.join('output', file), 'w') as f:
-        f.write(output)
+        input = json.load(f)
+    translated = interpreter.translate(input)
+    translated_lines = translated.splitlines()
+    hex_lines = input['text']
+
+    output = [
+        {
+            'hex': h_line, 
+            'text': t_line,
+            'mem': {},
+            'regs': {},
+            'stdout': ''
+        }
+        for h_line, t_line in 
+        zip(hex_lines, translated_lines)
+    ]
+    
+    with open(os.path.join('output', file.replace('input', 'output')), 'w') as f:
+        json.dump(output, f, indent=True)
