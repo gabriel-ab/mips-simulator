@@ -1,3 +1,8 @@
+"""Mips Interpreter
+
+This module ofer methods to translate hexadecimal mips code to assembly
+"""
+
 from typing import Dict, Literal, Sequence
 from functools import partial
 from .constants import REGS, OPCODES, FUNCTIONS

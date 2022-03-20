@@ -1,3 +1,8 @@
+"""Mips Constants
+
+Constants for registers, instructions and all mips related strings
+"""
+
 NAMED_REGS = (
     '$zero',
     '$at',
