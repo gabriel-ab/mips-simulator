@@ -1,10 +1,8 @@
 import json
 from typing import Sequence, Dict
 import array
-from .constants import REGS
 
 class Register:
-
     def __init__(self, keys: Sequence[str]) -> None:
         self.map = {name: i for i, name in enumerate(keys)}
         self.regs = array.array('L', [0]*len(keys))
@@ -17,8 +15,8 @@ class Register:
     
     def __getitem__(self, id) -> int:
         if isinstance(id, str):
-            id = self.regs[id]
-        self.regs[id]
+            id = self.map[id]
+        return self.regs[id]
 
     def __setitem__(self, id, value) -> None:
         if isinstance(id, str):
@@ -26,6 +24,10 @@ class Register:
         if id == 0: return
         self.regs[id] = value
 
+class MipsRegister(Register):
+    def __init__(self) -> None:
+        from .constants import allregs
+        super().__init__(allregs())
 
 class MipsSimulator:
     reg: Register
@@ -33,7 +35,7 @@ class MipsSimulator:
 
     def __init__(self, input: Dict) -> None:
         self.mem = input['data']
-        self.reg = Register(REGS)
+        self.reg = MipsRegister()
         
         regs = input['config']['regs']
         for name, value in regs:
