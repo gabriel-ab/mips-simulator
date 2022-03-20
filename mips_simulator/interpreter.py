@@ -1,6 +1,6 @@
 from typing import Dict, Literal, Sequence
 from functools import partial
-from .constants import REGS
+from .constants import REGS, OPCODES, FUNCTIONS
 
 
 def hex2bin(text: str) -> str:
@@ -18,14 +18,14 @@ def split_bits(text: str, indexes: Sequence[int]) -> tuple[str]:
         zip(b_iter, e_iter)
     )
 
-
 split_r = partial(split_bits, indexes=(0, 6, 11, 16, 21, 26, 32))
 split_i = partial(split_bits, indexes=(0, 6, 11, 16, 32))
 split_j = partial(split_bits, indexes=(0, 6, 32))
+base2 = partial(int, base=2)
 
 
 def check_type(binary_text: str) -> Literal['R', 'I', 'J']:
-    opcode = int(binary_text[:6], base=2)
+    opcode = base2(binary_text[:6])
     if opcode == 0:
         return 'R'
     elif opcode in [2,3]:
@@ -35,7 +35,7 @@ def check_type(binary_text: str) -> Literal['R', 'I', 'J']:
 
 def translate_r_command(text: str) -> str:
     parts = split_r(text)
-    parts = tuple(map(partial(int, base=2), parts))
+    parts = tuple(map(base2, parts))
 
     op, rs, rt, rd, sh, fn = parts
     rs, rt, rd = REGS[rs], REGS[rt], REGS[rd]
@@ -56,7 +56,7 @@ def translate_r_command(text: str) -> str:
 
 def translate_i_command(text: str) -> str:
     parts = split_i(text)
-    parts = tuple(map(partial(int, base=2), parts))
+    parts = tuple(map(base2, parts))
 
     op, rs, rt, operand_or_offset = parts
     name, rs, rt = OPCODES[op], REGS[rs], REGS[rt]
@@ -72,10 +72,9 @@ def translate_i_command(text: str) -> str:
 
 def translate_j_command(text: str) -> str:
     parts = split_j(text)
-    op, jump = parts
-    op = OPCODES[int(parts[0], base=2)]
-    jump
-    return f'{op} {jump}'
+    op, jump = tuple(map(base2,parts))
+    
+    return f'{OPCODES[op]} {jump}'
 
 
 def translate(input: Dict):
