@@ -8,9 +8,9 @@ from functools import partial
 from .constants import REGS, OPCODES, FUNCTIONS
 
 
-def hex2bin(text: str) -> str:
+def hex2bin(text: str, output_len: int = 32) -> str:
     value = int(text, base=16)
-    return f'{value:032b}'
+    return f'{value:0{output_len}b}'
 
 
 def split_bits(text: str, indexes: Sequence[int]) -> tuple[str]:
@@ -50,7 +50,10 @@ def translate_r_command(text: str) -> str:
     
     name = FUNCTIONS[fn]
     
-    if name in 'mfhimflojr': # one argument cases
+    if name in 'mfhimflo':
+        return f'{name} {rd}'
+
+    if name in 'jr': # one argument cases
         return f'{name} {rs}'
 
     if name in 'multudivu': # two argument cases
