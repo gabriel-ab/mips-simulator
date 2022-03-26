@@ -3,7 +3,7 @@
 This module ofer methods to translate hexadecimal mips code to assembly
 """
 
-from typing import Dict, Literal, Sequence
+from typing import Dict, Literal, Sequence, Tuple
 from functools import partial
 from .constants import REGS, OPCODES, FUNCTIONS
 
@@ -13,7 +13,7 @@ def hex2bin(text: str, output_len: int = 32) -> str:
     return f'{value:0{output_len}b}'
 
 
-def split_bits(text: str, indexes: Sequence[int]) -> tuple[str]:
+def split_bits(text: str, indexes: Sequence[int]) -> Tuple[str]:
     b_iter = iter(indexes)
     e_iter = iter(indexes)
     next(e_iter)
