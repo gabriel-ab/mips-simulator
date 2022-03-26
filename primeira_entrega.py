@@ -21,6 +21,6 @@ for file in files:
         for h_line, t_line in 
         zip(hex_lines, translated_lines)
     ]
-    
-    with open(os.path.join('output', file.replace('input', 'output')), 'w') as f:
+
+    with open(os.path.join('output', file.replace('input', 'grupoG.output')), 'w') as f:
         json.dump(output, f, indent=True)
