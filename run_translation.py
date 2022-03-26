@@ -1,4 +1,4 @@
-from mips_simulator import interpreter
+from mips_simulator import decoder
 import json
 import os
 
@@ -6,7 +6,7 @@ files = os.listdir('input')
 for file in files:
     with open(os.path.join('input', file)) as f:
         input = json.load(f)
-    translated = interpreter.translate(input)
+    translated = decoder.translate(input)
     translated_lines = translated.splitlines()
     hex_lines = input['text']
 
