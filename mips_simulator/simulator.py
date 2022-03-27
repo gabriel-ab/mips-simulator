@@ -1,13 +1,13 @@
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Dict
 from .register import MipsRegister
-from .decoder import hex2bin, split_bits, translate, base2
+from . import decoder
 
 class MipsSimulator:
     reg: MipsRegister
-    mem: dict[str, bytes]
+    mem: Dict[str, bytes]
     
 
-    def __init__(self, input: dict) -> None:
+    def __init__(self, input: Dict) -> None:
         self.mem = input['data']
         self.reg = MipsRegister()
         
@@ -21,46 +21,58 @@ class MipsSimulator:
     def load_functions(self):
         reg = self.reg
         # R type
-        def _add   (a,b,c): reg[a] = reg[b] + reg[c]
-        def _sub   (a,b,c): reg[a] = reg[b] - reg[c]
-        def _addu  (a,b,c): reg[a] = reg[b] + abs(reg[c])
-        def _subu  (a,b,c): reg[a] = reg[b] - abs(reg[c])
-        def _mult  (a,b): reg['hi'], reg['lo'] = map(base2, split_bits(hex2bin(reg[a] * reg[b], 64), (None, 32, None)))
-        def _multu (a,b): _mult(a,b)
-        def _div   (a,b): reg['hi'], reg['lo'] = reg[a] % reg[b], reg[a] // reg[b]
-        def _divu  (a,b): _div(a,b)
-        def _mfhi  (a): reg[a] = reg['hi']
-        def _mflo  (a): reg[a] = reg['lo']
+        def _add    (rs, rt, rd): reg[rd] = reg[rs] + reg[rt]
+        def _sub    (rs, rt, rd): reg[rd] = reg[rs] - reg[rt]
+        def _addu   (rs, rt, rd): reg[rd] = reg[rs] + abs(reg[rt])
+        def _subu   (rs, rt, rd): reg[rd] = reg[rs] - abs(reg[rt])
+        def _mult   (rs, rt):
+            temp = decoder.int2bin(reg[rs] * reg[rt], 64)
+            temp = decoder.split_bits(temp, (None, 32, None))
+            reg.hi, reg.lo = map(decoder.bin2int, temp)
+        def _multu  (rs, rt): _mult(rs, rt)
+        def _div    (rs, rt): reg.hi, reg.lo = reg[rs] % reg[rt], reg[rs] // reg[rt]
+        def _divu   (rs, rt): _div(rs, rt)
+        def _mfhi   (rd): reg[rd] = reg.hi
+        def _mflo   (rd): reg[rd] = reg.lo
         
-        def _slt   (a,b,c): reg[a] = 1 if reg[b] < reg[c] else 0
-        def _and   (a,b,c): reg[a] = reg[b] & reg[c]
-        def _or    (a,b,c): reg[a] = reg[b] | reg[c]
-        def _xor   (a,b,c): reg[a] = reg[b] ^ reg[c]
-        def _nor   (a,b,c): reg[a] = ~(reg[b] | reg[c])
-        def _sll   (a,b,c): reg[a] = reg[b] << c
-        def _sllv  (a,b,c): reg[a] = reg[b] << reg[c]
-        def _srl   (a,b,c): reg[a] = reg[b] >> c
-        def _srlv  (a,b,c): reg[a] = reg[b] >> reg[c]
-        # TODO
-        def _sra   (a,b,c): reg[a] = reg[b] >> reg[c]
-        def _srav  (a,b,c): reg[a] = reg[b] - reg[c]
+        def _slt    (rs, rt, rd): reg[rd] = 1 if reg[rs] < reg[rt] else 0
+        def _and    (rs, rt, rd): reg[rd] = reg[rs] & reg[rt]
+        def _or     (rs, rt, rd): reg[rd] = reg[rs] | reg[rt]
+        def _xor    (rs, rt, rd): reg[rd] = reg[rs] ^ reg[rt]
+        def _nor    (rs, rt, rd): reg[rd] = ~(reg[rs] | reg[rt])
 
+        def _sll    (rs, rt, rd): reg[rd] = reg[rs] << rt
+        def _sllv   (rs, rt, rd): reg[rd] = reg[rs] << reg[rt]
+        def _srl    (rs, rt, rd): reg[rd] = reg[rs] >> rt
+        def _srlv   (rs, rt, rd): reg[rd] = reg[rs] >> reg[rt]
+        def _sra    (rs, rt, rd): reg[rd] = reg[rs] >> reg[rt]
+        def _srav   (rs, rt, rd): reg[rd] = reg[rs] >> rt
+        def _jr     (rs, rt, rd): reg[31], reg.pc = reg.pc ,rs
 
         # I type
-        # J type
-        def _addi  (a,b,c): reg[a] = reg[b] + c
-        def _addiu (a,b,c): reg[a] = reg[b] + abs(c)
-        
-        # logical
-        def _andi  (a,b,c): reg[a] = reg[b] & c
-        def _ori   (a,b,c): reg[a] = reg[b] | c
-        def _xori  (a,b,c): reg[a] = reg[b] ^ c
-        # TODO
-        
-        def _addi  (a,b,c): reg[a] = reg[b] - reg[c]
-        def _slti  (a,b,c): reg[a] = reg[b] - reg[c]
-        
 
+        def _lui    (rs, rt, immediate): reg[rt] = rs << 16
+        def _addi   (rs, rt, immediate): reg[rt] = reg[rs] + immediate
+        def _slti   (rs, rt, immediate): reg[rt] = 1 if reg[rs] < immediate else 0
+        def _andi   (rs, rt, immediate): reg[rt] = reg[rs] & immediate
+        def _ori    (rs, rt, immediate): reg[rt] = reg[rs] | immediate
+        def _xori   (rs, rt, immediate): reg[rt] = reg[rs] ^ immediate
+        def _lw     (rs, rt, immediate): reg[rt] = self.mem[rs] + immediate
+        def _sw     (rs, rt, immediate): self.mem[rt] = self.reg[rs] + immediate
+        def _bltz   (rs, rt, immediate):
+            if rs < 0: reg.pc += immediate << 2
+        def _beq    (rs, rt, immediate):
+            if reg[rs] == reg[rt]: reg.pc += immediate << 2
+        def _bne    (rs, rt, immediate):
+            if reg[rs] != reg[rt]: reg.pc += immediate << 2
+        def _addiu  (rs, rt, immediate): reg[rt] = rs + immediate
+
+        # Maybe wrong
+        def _lb     (rs, rt, immediate): reg[rt] = self.mem[rs + immediate]
+        def _lbu    (rs, rt, immediate): reg[rt] = self.mem[rs + immediate]
+        def _sbu    (rs, rt, immediate): self.mem[rt] = self.reg[rs + immediate]
+
+        # TODO: J type
         self.functions = {
             key: value 
             for key, value in 
@@ -79,18 +91,9 @@ class MipsSimulator:
         except OverflowError:
             output['stdout'] = 'overflow'
 
-
-
-    
-    def __call__(self, json: dict[str, dict]) -> dict[str, dict]:
+    def __call__(self, json: Dict[str, Dict]) -> Dict[str, Dict]:
         # logic and aritmetic 
-        for line in translate(json):
+        for line in decoder.translate(json):
             text = line['text']
 
             self.alu
-
-
-
-with open('input/identify.input.json') as f:
-    mips_input = json.load(f)
-

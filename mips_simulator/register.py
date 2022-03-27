@@ -27,3 +27,17 @@ class MipsRegister(Register):
     def __init__(self) -> None:
         from .constants import allregs
         super().__init__(allregs())
+
+    @property
+    def pc(self): return self.regs[32]
+    @property
+    def hi(self): return self.regs[33]
+    @property
+    def lo(self): return self.regs[34]
+
+    @pc.setter
+    def pc(self, value): self.regs[32] = value
+    @hi.setter
+    def pc(self, value): self.regs[33] = value
+    @lo.setter
+    def pc(self, value): self.regs[34] = value

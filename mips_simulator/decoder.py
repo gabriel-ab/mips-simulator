@@ -8,10 +8,17 @@ from functools import partial
 from .constants import REGS, OPCODES, FUNCTIONS
 
 
-def hex2bin(text: str, output_len: int = 32) -> str:
+def hex2bin(text: str, num_bits: int = 32) -> str:
     value = int(text, base=16)
-    return f'{value:0{output_len}b}'
+    return int2bin(value, num_bits)
 
+def int2bin(value: int, num_bits: int = 32) -> str:
+    result = f'{value:0{num_bits}b}'
+    return result[-num_bits:] if len(result) > num_bits else result
+
+def bin2int(value: str, num_bits: int):
+    result = int(value, base=2)
+    return result % (num_bits**2)
 
 def split_bits(text: str, indexes: Sequence[int]) -> Tuple[str]:
     b_iter = iter(indexes)
@@ -26,11 +33,10 @@ def split_bits(text: str, indexes: Sequence[int]) -> Tuple[str]:
 split_r = partial(split_bits, indexes=(0, 6, 11, 16, 21, 26, 32))
 split_i = partial(split_bits, indexes=(0, 6, 11, 16, 32))
 split_j = partial(split_bits, indexes=(0, 6, 32))
-base2 = partial(int, base=2)
 
 
 def check_type(binary_text: str) -> Literal['R', 'I', 'J']:
-    opcode = base2(binary_text[:6])
+    opcode = bin2int(binary_text[:6])
     if opcode == 0:
         return 'R'
     elif opcode in [2,3]:
@@ -40,7 +46,7 @@ def check_type(binary_text: str) -> Literal['R', 'I', 'J']:
 
 def translate_r_command(text: str) -> str:
     parts = split_r(text)
-    parts = tuple(map(base2, parts))
+    parts = tuple(map(bin2int, parts))
 
     op, rs, rt, rd, sh, fn = parts
     rs, rt, rd = REGS[rs], REGS[rt], REGS[rd]
@@ -64,7 +70,7 @@ def translate_r_command(text: str) -> str:
 
 def translate_i_command(text: str) -> str:
     parts = split_i(text)
-    parts = tuple(map(base2, parts))
+    parts = tuple(map(bin2int, parts))
 
     op, rs, rt, operand_or_offset = parts
     name, rs, rt = OPCODES[op], REGS[rs], REGS[rt]
@@ -83,7 +89,7 @@ def translate_i_command(text: str) -> str:
 
 def translate_j_command(text: str) -> str:
     parts = split_j(text)
-    op, jump = tuple(map(base2,parts))
+    op, jump = tuple(map(bin2int,parts))
     
     return f'{OPCODES[op]} {jump*4}'
 
