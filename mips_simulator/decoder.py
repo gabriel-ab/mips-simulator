@@ -70,19 +70,22 @@ def translate_i_command(text: str) -> str:
     name, rs, rt = OPCODES[op], REGS[rs], REGS[rt]
 
     if name in 'lwswlbusb': # offset cases
-        return f'{name} {rs}, {operand_or_offset}({rt})'
+        return f'{name} {rt}, {operand_or_offset}({rs})'
 
-    if name in 'luibltz': # one argument cases
+    if name == 'bltz': # one argument cases
         return f'{name} {rs}, {operand_or_offset}'
 
-    return f'{name} {rs}, {rt}, {operand_or_offset}'
+    if name == 'lui':
+        return f'{name} {rt}, {operand_or_offset}'
+
+    return f'{name} {rt}, {rs}, {operand_or_offset}'
 
 
 def translate_j_command(text: str) -> str:
     parts = split_j(text)
     op, jump = tuple(map(base2,parts))
     
-    return f'{OPCODES[op]} {jump}'
+    return f'{OPCODES[op]} {jump*4}'
 
 
 def translate(input: Dict):
