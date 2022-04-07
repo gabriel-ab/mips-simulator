@@ -1,8 +1,8 @@
 import array
 
 class Register(array.array):
-    def __init__(self, size=32, dsize='L'):
-        super().__init__(dsize, [0]*size)
+    def __init__(self, size=32, typecode='l'):
+        super().__init__(typecode, [0]*size)
 
 
 class MipsRegister(Register):
