@@ -1,43 +1,36 @@
-from typing import Sequence
 import array
 
-class Register:
-    def __init__(self, keys: Sequence[str]) -> None:
-        self.map = {name: i for i, name in enumerate(keys)}
-        self.regs = array.array('L', [0]*len(keys))
-    
-    def keys(self) -> Sequence[str]:
-        return self.map.keys()
+class Register(array.array):
+    def __init__(self, size=32, dsize='L'):
+        super().__init__(dsize, [0]*size)
 
-    def __repr__(self) -> str:
-        return f'{self.__class__.__name__}(keys={list(self.keys())}, mem={self.regs})'
-    
-    def __getitem__(self, id) -> int:
-        if isinstance(id, str):
-            id = self.map[id]
-        return self.regs[id]
-
-    def __setitem__(self, id, value) -> None:
-        if isinstance(id, str):
-            id = self.map[id]
-        if id == 0: return
-        self.regs[id] = value
 
 class MipsRegister(Register):
-    def __init__(self) -> None:
-        from .constants import allregs
-        super().__init__(allregs())
+    def __init__(self):
+        super().__init__(35)
+
+    def __getitem__(self, id: str) -> int:
+        if isinstance(id, str):
+            id: int = int(id[1:])
+        return super().__getitem__(id)
+
+    def __setitem__(self, id: str, value) -> None:
+        if isinstance(id, str):
+            id = int(id[1:])
+        if id == 0:
+            raise Exception("Register can't write at $0")
+        super().__setitem__(id, value)
 
     @property
-    def pc(self): return self.regs[32]
+    def pc(self): return self[32]
     @property
-    def hi(self): return self.regs[33]
+    def hi(self): return self[33]
     @property
-    def lo(self): return self.regs[34]
+    def lo(self): return self[34]
 
     @pc.setter
-    def pc(self, value): self.regs[32] = value
+    def pc(self, value): self[32] = value
     @hi.setter
-    def pc(self, value): self.regs[33] = value
+    def pc(self, value): self[33] = value
     @lo.setter
-    def pc(self, value): self.regs[34] = value
+    def pc(self, value): self[34] = value
