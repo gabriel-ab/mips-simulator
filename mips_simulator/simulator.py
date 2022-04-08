@@ -1,76 +1,165 @@
 from typing import Callable, Tuple, Dict
 from .register import MipsRegister
 from . import decoder
+from .decoder import MipsCommandR, MipsCommandI, MipsCommandJ
+
 
 class MipsSimulator:
-    reg: MipsRegister
-    mem: Dict[str, bytes]
-    
-
     def __init__(self, input: Dict) -> None:
         self.mem = input['data']
         self.reg = MipsRegister()
+        
+        config: dict = input['config']
+        for key in config.get('reg', {}):
+            self.reg[int(key[1:])] = config[key]
+
+        self.stdout = ''
         
         regs = input['config']['regs']
         for name, value in regs:
             self.reg[name] = value
         self.load_functions()
-    def split_hilo(number: int) -> Tuple[int, float]:
-        number.to_bytes(64)
+
+    def check_overflow(self, value: int) -> int:
+        if value >= 2**32:
+            self.stdout.write('overflow')
+        return value
+
     
     def load_functions(self):
         reg = self.reg
         # R type
-        def _add    (rs, rt, rd): reg[rd] = reg[rs] + reg[rt]
-        def _sub    (rs, rt, rd): reg[rd] = reg[rs] - reg[rt]
-        def _addu   (rs, rt, rd): reg[rd] = reg[rs] + abs(reg[rt])
-        def _subu   (rs, rt, rd): reg[rd] = reg[rs] - abs(reg[rt])
-        def _mult   (rs, rt):
-            temp = decoder.int2bin(reg[rs] * reg[rt], 64)
+        def _add(input: MipsCommandR):
+            result = reg[input.rs] + reg[input.rt]
+            reg[input.rd] = self.check_overflow(result)
+
+        def _sub(input: MipsCommandR):
+            result = reg[input.rs] - reg[input.rt]
+            reg[input.rd] = self.check_overflow(result)
+
+        def _addu(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] + reg[input.rt]
+
+        def _subu(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] - reg[input.rt]
+
+        def _mult(input: MipsCommandR):
+            temp = decoder.int2bin(reg[input.rs] * reg[input.rt], 64)
             temp = decoder.split_bits(temp, (None, 32, None))
             reg.hi, reg.lo = map(decoder.bin2int, temp)
-        def _multu  (rs, rt): _mult(rs, rt)
-        def _div    (rs, rt): reg.hi, reg.lo = reg[rs] % reg[rt], reg[rs] // reg[rt]
-        def _divu   (rs, rt): _div(rs, rt)
-        def _mfhi   (rd): reg[rd] = reg.hi
-        def _mflo   (rd): reg[rd] = reg.lo
-        
-        def _slt    (rs, rt, rd): reg[rd] = 1 if reg[rs] < reg[rt] else 0
-        def _and    (rs, rt, rd): reg[rd] = reg[rs] & reg[rt]
-        def _or     (rs, rt, rd): reg[rd] = reg[rs] | reg[rt]
-        def _xor    (rs, rt, rd): reg[rd] = reg[rs] ^ reg[rt]
-        def _nor    (rs, rt, rd): reg[rd] = ~(reg[rs] | reg[rt])
 
-        def _sll    (rs, rt, rd): reg[rd] = reg[rs] << rt
-        def _sllv   (rs, rt, rd): reg[rd] = reg[rs] << reg[rt]
-        def _srl    (rs, rt, rd): reg[rd] = reg[rs] >> rt
-        def _srlv   (rs, rt, rd): reg[rd] = reg[rs] >> reg[rt]
-        def _sra    (rs, rt, rd): reg[rd] = reg[rs] >> reg[rt]
-        def _srav   (rs, rt, rd): reg[rd] = reg[rs] >> rt
-        def _jr     (rs, rt, rd): reg[31], reg.pc = reg.pc ,rs
+        def _multu(input: MipsCommandR):
+            _mult(input.rs, input.rt)
+
+        def _div(input: MipsCommandR):
+            reg.hi = reg[input.rs] % reg[input.rt]
+            reg.lo = reg[input.rs] // reg[input.rt]
+
+        def _divu(input: MipsCommandR):
+            _div(input.rs, input.rt)
+
+        def _mfhi(input: MipsCommandR):
+            reg[input.rd] = reg.hi
+
+        def _mflo(input: MipsCommandR):
+            reg[input.rd] = reg.lo
+
+        def _slt(input: MipsCommandR):
+            reg[input.rd] = 1 if reg[input.rs] < reg[input.rt] else 0
+
+        def _and(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] & reg[input.rt]
+
+        def _or(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] | reg[input.rt]
+
+        def _xor(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] ^ reg[input.rt]
+
+        def _nor(input: MipsCommandR):
+            reg[input.rd] = ~(reg[input.rs] | reg[input.rt])
+
+        def _sll(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] << input.rt
+
+        def _sllv(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] << reg[input.rt]
+
+        def _srl(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] >> input.rt
+
+        def _srlv(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] >> reg[input.rt]
+
+        def _sra(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] >> reg[input.rt]
+
+        def _srav(input: MipsCommandR):
+            reg[input.rd] = reg[input.rs] >> input.rt
+
+        def _jr(input: MipsCommandR):
+            reg[31] = reg.pc
+            reg.pc = input.rs
+
 
         # I type
 
-        def _lui    (rs, rt, immediate): reg[rt] = rs << 16
-        def _addi   (rs, rt, immediate): reg[rt] = reg[rs] + immediate
-        def _slti   (rs, rt, immediate): reg[rt] = 1 if reg[rs] < immediate else 0
-        def _andi   (rs, rt, immediate): reg[rt] = reg[rs] & immediate
-        def _ori    (rs, rt, immediate): reg[rt] = reg[rs] | immediate
-        def _xori   (rs, rt, immediate): reg[rt] = reg[rs] ^ immediate
-        def _lw     (rs, rt, immediate): reg[rt] = self.mem[rs] + immediate
-        def _sw     (rs, rt, immediate): self.mem[rt] = self.reg[rs] + immediate
-        def _bltz   (rs, rt, immediate):
-            if rs < 0: reg.pc += immediate << 2
-        def _beq    (rs, rt, immediate):
-            if reg[rs] == reg[rt]: reg.pc += immediate << 2
-        def _bne    (rs, rt, immediate):
-            if reg[rs] != reg[rt]: reg.pc += immediate << 2
-        def _addiu  (rs, rt, immediate): reg[rt] = rs + immediate
+
+        def _lui(input: MipsCommandI):
+            reg[input.rt] = input.rs << 16
+
+        def _addi(input: MipsCommandI):
+            reg[input.rt] = reg[input.rs] + input.operand_or_offset
+
+        def _slti(input: MipsCommandI):
+            reg[input.rt] = 1 if reg[input.rs] < input.operand_or_offset else 0
+
+        def _andi(input: MipsCommandI):
+            reg[input.rt] = reg[input.rs] & input.operand_or_offset
+
+        def _ori(input: MipsCommandI):
+            reg[input.rt] = reg[input.rs] | input.operand_or_offset
+
+        def _xori(input: MipsCommandI):
+            reg[input.rt] = reg[input.rs] ^ input.operand_or_offset
+
+        def _lw(input: MipsCommandI):
+            reg[input.rt] = self.mem[input.rs] + input.operand_or_offset
+
+        def _sw(input: MipsCommandI):
+            self.mem[input.rt + input.operand_or_offset] = self.reg[input.rs]
+
+        def _bltz(input: MipsCommandI):
+            if input.rs < 0:
+                reg.pc += input.operand_or_offset << 2
+
+        def _beq(input: MipsCommandI):
+            if reg[input.rs] == reg[input.rt]:
+                reg.pc += input.operand_or_offset << 2
+
+        def _bne(input: MipsCommandI):
+            if reg[input.rs] != reg[input.rt]:
+                reg.pc += input.operand_or_offset << 2
+
+        def _addiu(input: MipsCommandI):
+            reg[input.rt] = input.rs + input.operand_or_offset
 
         # Maybe wrong
-        def _lb     (rs, rt, immediate): reg[rt] = self.mem[rs + immediate]
-        def _lbu    (rs, rt, immediate): reg[rt] = self.mem[rs + immediate]
-        def _sbu    (rs, rt, immediate): self.mem[rt] = self.reg[rs + immediate]
+        def _lb(input: MipsCommandI):
+            reg[input.rt] = self.mem[input.rs + input.operand_or_offset] 
+
+        def _lbu(input: MipsCommandI):
+            reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
+
+        def _sbu(input: MipsCommandI):
+            self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
+
+        def _syscall(input):
+            if self.reg[2] == 1: # print integer
+                self.stdout += str(self.reg[4])
+            elif self.reg[2] == 4: # print string
+                pass
+                # self.stdout += str(self.data[self.reg[4]])
 
         # TODO: J type
         self.functions = {
@@ -92,8 +181,4 @@ class MipsSimulator:
             output['stdout'] = 'overflow'
 
     def __call__(self, json: Dict[str, Dict]) -> Dict[str, Dict]:
-        # logic and aritmetic 
-        for line in decoder.translate(json):
-            text = line['text']
-
-            self.alu
+        pass
