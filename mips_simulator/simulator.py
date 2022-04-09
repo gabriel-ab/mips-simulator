@@ -1,11 +1,21 @@
-from typing import Callable, Tuple, Dict
-from .register import MipsRegister
-from . import decoder
-from .decoder import MipsCommandR, MipsCommandI, MipsCommandJ
+from dataclasses import dataclass, field
+from typing import Callable, Dict
+
+from mips_simulator import utils
+from mips_simulator.register import MipsRegister
+from mips_simulator.entities import MipsCommand, MipsCommandR, MipsCommandI, MipsCommandJ
 
 
+@dataclass
 class MipsSimulator:
-    def __init__(self, input: Dict) -> None:
+    config: Dict = {}
+    mem: Dict[str, str] = {}
+    reg: MipsRegister = field(default_factory=MipsRegister)
+
+    def __post_init__(self):
+        self.load_functions()
+
+    def from_config(self, input: Dict) -> None:
         self.mem = input['data']
         self.reg = MipsRegister()
         
@@ -25,7 +35,6 @@ class MipsSimulator:
             self.stdout.write('overflow')
         return value
 
-    
     def load_functions(self):
         reg = self.reg
         # R type
@@ -44,9 +53,9 @@ class MipsSimulator:
             reg[input.rd] = reg[input.rs] - reg[input.rt]
 
         def _mult(input: MipsCommandR):
-            temp = decoder.int2bin(reg[input.rs] * reg[input.rt], 64)
-            temp = decoder.split_bits(temp, (None, 32, None))
-            reg.hi, reg.lo = map(decoder.bin2int, temp)
+            temp = utils.int2bin(reg[input.rs] * reg[input.rt], 64)
+            temp = utils.split_bits(temp, (None, 32, None))
+            reg.hi, reg.lo = map(utils.bin2int, temp)
 
         def _multu(input: MipsCommandR):
             _mult(input.rs, input.rt)
@@ -170,7 +179,12 @@ class MipsSimulator:
         }
     
 
-    def run(self, instruction):
+    def exec(self, instruction: MipsCommand):
+        utils.check_type()
+        self.functions
+
+
+    def run(self, instruction: Dict):
         text: str = instruction['text']
         splited = text.replace(',', '').split(' ')
         func, args = splited[0], splited[1:]
