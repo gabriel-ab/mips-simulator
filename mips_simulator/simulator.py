@@ -1,38 +1,45 @@
 from dataclasses import dataclass, field
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Optional, Sequence, Generator
 
 from mips_simulator import utils
-from mips_simulator.register import MipsRegister
+from mips_simulator.register import Register
 from mips_simulator.entities import MipsCommand, MipsCommandR, MipsCommandI, MipsCommandJ
-
 
 @dataclass
 class MipsSimulator:
-    config: Dict = {}
-    mem: Dict[str, str] = {}
-    reg: MipsRegister = field(default_factory=MipsRegister)
+    mem: Dict = field(default_factory=dict)
+    data: Dict = field(default_factory=dict)
+    reg: Register = field(default_factory=Register)
+    hist: List[MipsCommand] = field(default_factory=list, init=False, repr=False)
 
     def __post_init__(self):
         self.load_functions()
 
-    def from_config(self, input: Dict) -> None:
-        self.mem = input['data']
-        self.reg = MipsRegister()
-        
-        config: dict = input['config']
-        for key in config.get('reg', {}):
-            self.reg[int(key[1:])] = config[key]
+    @property
+    def config(self):
+        return self._config
+    
+    @config.setter
+    def config(self, config):
+        self._config = config
+
+        self.mem = config['mem']
+        regs = config.get('regs', {})
+        for key in regs:
+            if key == 'pc':
+                self.reg.pc = regs[key]
+            elif key == 'hi':
+                self.reg.hi = regs[key]
+            elif key == 'lo':
+                self.reg.lo = regs[key]
+            else:
+                self.reg[key] = regs[key]
 
         self.stdout = ''
-        
-        regs = input['config']['regs']
-        for name, value in regs:
-            self.reg[name] = value
         self.load_functions()
 
     def check_overflow(self, value: int) -> int:
-        if value >= 2**32:
-            self.stdout.write('overflow')
+        self.stdout = 'overflow' if value >= 2**32 else ''
         return value
 
     def load_functions(self):
@@ -133,10 +140,10 @@ class MipsSimulator:
             reg[input.rt] = reg[input.rs] ^ input.operand_or_offset
 
         def _lw(input: MipsCommandI):
-            reg[input.rt] = self.mem[input.rs] + input.operand_or_offset
+            reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
 
         def _sw(input: MipsCommandI):
-            self.mem[input.rt + input.operand_or_offset] = self.reg[input.rs]
+            self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
 
         def _bltz(input: MipsCommandI):
             if input.rs < 0:
@@ -153,7 +160,6 @@ class MipsSimulator:
         def _addiu(input: MipsCommandI):
             reg[input.rt] = input.rs + input.operand_or_offset
 
-        # Maybe wrong
         def _lb(input: MipsCommandI):
             reg[input.rt] = self.mem[input.rs + input.operand_or_offset] 
 
@@ -162,6 +168,9 @@ class MipsSimulator:
 
         def _sbu(input: MipsCommandI):
             self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
+
+        def _jal(input: MipsCommandJ):
+            pass
 
         def _syscall(input):
             if self.reg[2] == 1: # print integer
@@ -177,22 +186,34 @@ class MipsSimulator:
             locals().items() 
             if isinstance(value, Callable)
         }
-    
 
-    def exec(self, instruction: MipsCommand):
-        utils.check_type()
-        self.functions
+    def decode_instruction(self, instruction: str) -> MipsCommand:
+        type = utils.check_type(utils.hex2bin(instruction))
+        if type == 'R':
+            return MipsCommandR.from_hex(instruction)
+        if type == 'I':
+            return MipsCommandI.from_hex(instruction)
+        if type == 'J':
+            return MipsCommandJ.from_hex(instruction)
 
+    def exec(self, instructions: Sequence[str], debug=False) -> List[Dict]:
+        info = []
+        for instruction in instructions:
+            instruction = self.decode_instruction(instruction)
+            self.hist.append(instruction)
+            self.functions['_'+instruction.name](instruction)
+            if debug:
+                info.append({
+                    'hex': instruction.hex, 
+                    'text': str(instruction),
+                    'mem': self.mem,
+                    'regs': self.reg.dict,
+                    'stdout': self.stdout
+                })
+        return info
+    def __call__(self, input: Dict, debug=False) -> List[Dict]:
+        config = input.get('config', None)
+        if config:
+            self.config = config
 
-    def run(self, instruction: Dict):
-        text: str = instruction['text']
-        splited = text.replace(',', '').split(' ')
-        func, args = splited[0], splited[1:]
-        output = {}
-        try:
-            self.functions['_'+func](*args)
-        except OverflowError:
-            output['stdout'] = 'overflow'
-
-    def __call__(self, json: Dict[str, Dict]) -> Dict[str, Dict]:
-        pass
+        return self.exec(input['text'], debug=debug)
