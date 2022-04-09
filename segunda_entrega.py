@@ -4,7 +4,6 @@ import os
 
 files = os.listdir('input')
 for file in files:
-    constants.set_regs_type('named')
     sim = simulator.MipsSimulator()
 
     with open(os.path.join('input', file)) as f:

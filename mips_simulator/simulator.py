@@ -11,6 +11,7 @@ class MipsSimulator:
     data: Dict = field(default_factory=dict)
     reg: Register = field(default_factory=Register)
     hist: List[MipsCommand] = field(default_factory=list, init=False, repr=False)
+    stdout: str = ''
 
     def __post_init__(self):
         self.load_functions()
@@ -26,14 +27,7 @@ class MipsSimulator:
         self.mem = config['mem']
         regs = config.get('regs', {})
         for key in regs:
-            if key == 'pc':
-                self.reg.pc = regs[key]
-            elif key == 'hi':
-                self.reg.hi = regs[key]
-            elif key == 'lo':
-                self.reg.lo = regs[key]
-            else:
-                self.reg[key] = regs[key]
+            self.reg[key] = regs[key]
 
         self.stdout = ''
         self.load_functions()
@@ -75,10 +69,10 @@ class MipsSimulator:
             _div(input.rs, input.rt)
 
         def _mfhi(input: MipsCommandR):
-            reg[input.rd] = reg.hi
+            reg[input.rd] = reg['hi']
 
         def _mflo(input: MipsCommandR):
-            reg[input.rd] = reg.lo
+            reg[input.rd] = reg['lo']
 
         def _slt(input: MipsCommandR):
             reg[input.rd] = 1 if reg[input.rs] < reg[input.rt] else 0
@@ -114,21 +108,17 @@ class MipsSimulator:
             reg[input.rd] = reg[input.rs] >> input.rt
 
         def _jr(input: MipsCommandR):
-            reg[31] = reg.pc
-            reg.pc = input.rs
+            reg[31] = reg['pc']
+            reg['pc'] = input.rs
 
 
         # I type
 
-
-        def _lui(input: MipsCommandI):
-            reg[input.rt] = input.rs << 16
-
         def _addi(input: MipsCommandI):
             reg[input.rt] = reg[input.rs] + input.operand_or_offset
 
-        def _slti(input: MipsCommandI):
-            reg[input.rt] = 1 if reg[input.rs] < input.operand_or_offset else 0
+        def _addiu(input: MipsCommandI):
+            reg[input.rt] = input.rs + input.operand_or_offset
 
         def _andi(input: MipsCommandI):
             reg[input.rt] = reg[input.rs] & input.operand_or_offset
@@ -139,6 +129,12 @@ class MipsSimulator:
         def _xori(input: MipsCommandI):
             reg[input.rt] = reg[input.rs] ^ input.operand_or_offset
 
+        def _lui(input: MipsCommandI):
+            reg[input.rt] = input.rs << 16
+
+        def _slti(input: MipsCommandI):
+            reg[input.rt] = 1 if reg[input.rs] < input.operand_or_offset else 0
+
         def _lw(input: MipsCommandI):
             reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
 
@@ -147,18 +143,15 @@ class MipsSimulator:
 
         def _bltz(input: MipsCommandI):
             if input.rs < 0:
-                reg.pc += input.operand_or_offset << 2
+                reg['pc'] += input.operand_or_offset << 2
 
         def _beq(input: MipsCommandI):
             if reg[input.rs] == reg[input.rt]:
-                reg.pc += input.operand_or_offset << 2
+                reg['pc'] += input.operand_or_offset << 2
 
         def _bne(input: MipsCommandI):
             if reg[input.rs] != reg[input.rt]:
-                reg.pc += input.operand_or_offset << 2
-
-        def _addiu(input: MipsCommandI):
-            reg[input.rt] = input.rs + input.operand_or_offset
+                reg['pc'] += input.operand_or_offset << 2
 
         def _lb(input: MipsCommandI):
             reg[input.rt] = self.mem[input.rs + input.operand_or_offset] 
@@ -166,10 +159,14 @@ class MipsSimulator:
         def _lbu(input: MipsCommandI):
             reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
 
-        def _sbu(input: MipsCommandI):
+        def _sb(input: MipsCommandI):
             self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
 
+        # J type
+        
         def _jal(input: MipsCommandJ):
+            pass
+        def _j(input: MipsCommandJ):
             pass
 
         def _syscall(input):
@@ -179,7 +176,6 @@ class MipsSimulator:
                 pass
                 # self.stdout += str(self.data[self.reg[4]])
 
-        # TODO: J type
         self.functions = {
             key: value 
             for key, value in 
