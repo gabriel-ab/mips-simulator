@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Sequence, Generator
+from typing import Callable, Dict, List, Sequence
 
 from mips_simulator import utils
 from mips_simulator.register import Register

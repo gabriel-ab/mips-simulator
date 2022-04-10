@@ -2,6 +2,7 @@
 from abc import ABC, abstractstaticmethod
 from dataclasses import dataclass, field
 from typing import Tuple
+import ctypes
 
 from mips_simulator import utils, constants
 
@@ -18,7 +19,7 @@ class MipsCommand(ABC):
     @classmethod
     def from_hex(cls, value: str):
         parts = cls.split(utils.hex2bin(value))
-        parts = tuple(map(utils.bin2int, parts))
+        parts = tuple(int(part, base=2) for part in parts)
         result = cls(*parts)
         result.hex = value
         return result
@@ -67,6 +68,15 @@ class MipsCommandI(MipsCommand):
     @staticmethod
     def split(bin_instruction: str) -> Tuple[str]:
         return utils.split_bits(bin_instruction, indexes=(0, 6, 11, 16, 32))
+
+    @classmethod
+    def from_hex(cls, value: str):
+        parts = cls.split(utils.hex2bin(value))
+        parts = tuple(int(part, base=2) for part in parts)
+        result = cls(*parts)
+        result.operand_or_offset = ctypes.c_int16(result.operand_or_offset).value
+        result.hex = value
+        return result
 
     @property
     def name(self):

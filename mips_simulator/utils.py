@@ -11,7 +11,7 @@ def int2bin(value: int, num_bits: int = 32) -> str:
 
 def bin2int(value: str, num_bits: int = 32) -> int:
     result = int(value, base=2)
-    return result % (num_bits**2)
+    return result % (2**num_bits)
 
 def split_bits(text: str, indexes: Sequence[int]) -> Tuple[str]:
     b_iter = iter(indexes)
