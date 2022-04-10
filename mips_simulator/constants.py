@@ -25,7 +25,7 @@ EXTRA_REGS = ('pc', 'hi', 'lo')
 REGS = NUM_REGS + EXTRA_REGS
 
 
-FUNCTIONS = { 0: "sll", 2: "srl", 3: "sra", 4: "sllv", 6: "srlv", 7: "srav", 8: "jr", 16: "mfhi", 18: "mflo", 24: "mult", 25: "multu", 26: "div", 27: "divu", 32: "add", 33: "addu", 34: "sub", 35: "subu", 36: "and", 37: "or", 38: "xor", 39: "nor", 42: "slt"}
+FUNCTIONS = { 0: "sll", 2: "srl", 3: "sra", 4: "sllv", 6: "srlv", 7: "srav", 8: "jr", 12: "syscall", 16: "mfhi", 18: "mflo", 24: "mult", 25: "multu", 26: "div", 27: "divu", 32: "add", 33: "addu", 34: "sub", 35: "subu", 36: "and", 37: "or", 38: "xor", 39: "nor", 42: "slt"}
 OPCODES = {
     0: FUNCTIONS,
     1: "bltz", 2: "j", 3: "jal", 4: "beq", 5: "bne", 6: "blez", 7: "bgtz", 8: "addi", 9: "addiu", 10: "slti", 12: "andi", 13: "ori", 14: "xori", 15: "lui", 32: "lb", 35: "lw", 36: "lbu", 40: "sb", 43: "sw"

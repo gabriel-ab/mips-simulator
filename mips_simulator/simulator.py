@@ -33,19 +33,22 @@ class MipsSimulator:
         self.load_functions()
 
     def check_overflow(self, value: int) -> int:
-        self.stdout = 'overflow' if value >= 2**32 else ''
-        return value
+        result = value >= 2**32
+        self.stdout = 'overflow' if result else ''
+        return result
 
     def load_functions(self):
         reg = self.reg
         # R type
         def _add(input: MipsCommandR):
             result = reg[input.rs] + reg[input.rt]
-            reg[input.rd] = self.check_overflow(result)
+            if not self.check_overflow(result):
+                reg[input.rd] = result
 
         def _sub(input: MipsCommandR):
             result = reg[input.rs] - reg[input.rt]
-            reg[input.rd] = self.check_overflow(result)
+            if not self.check_overflow(result):
+                reg[input.rd] = result
 
         def _addu(input: MipsCommandR):
             reg[input.rd] = reg[input.rs] + reg[input.rt]
@@ -59,14 +62,14 @@ class MipsSimulator:
             reg.hi, reg.lo = map(utils.bin2int, temp)
 
         def _multu(input: MipsCommandR):
-            _mult(input.rs, input.rt)
+            _mult(input)
 
         def _div(input: MipsCommandR):
             reg.hi = reg[input.rs] % reg[input.rt]
             reg.lo = reg[input.rs] // reg[input.rt]
 
         def _divu(input: MipsCommandR):
-            _div(input.rs, input.rt)
+            _div(input)
 
         def _mfhi(input: MipsCommandR):
             reg[input.rd] = reg['hi']
@@ -90,22 +93,22 @@ class MipsSimulator:
             reg[input.rd] = ~(reg[input.rs] | reg[input.rt])
 
         def _sll(input: MipsCommandR):
-            reg[input.rd] = reg[input.rs] << input.rt
+            reg[input.rd] = reg[input.rt] << input.sh
 
         def _sllv(input: MipsCommandR):
-            reg[input.rd] = reg[input.rs] << reg[input.rt]
+            reg[input.rd] = reg[input.rt] << reg[input.rs]
 
         def _srl(input: MipsCommandR):
-            reg[input.rd] = reg[input.rs] >> input.rt
+            reg[input.rd] = reg[input.rt] >> input.sh
 
         def _srlv(input: MipsCommandR):
-            reg[input.rd] = reg[input.rs] >> reg[input.rt]
+            reg[input.rd] = reg[input.rt] >> reg[input.rs]
 
         def _sra(input: MipsCommandR):
-            reg[input.rd] = reg[input.rs] >> reg[input.rt]
+            reg[input.rd] = reg[input.rt] >> input.sh
 
         def _srav(input: MipsCommandR):
-            reg[input.rd] = reg[input.rs] >> input.rt
+            reg[input.rd] = reg[input.rt] >> reg[input.rs]
 
         def _jr(input: MipsCommandR):
             reg[31] = reg['pc']
@@ -115,7 +118,9 @@ class MipsSimulator:
         # I type
 
         def _addi(input: MipsCommandI):
-            reg[input.rt] = reg[input.rs] + input.operand_or_offset
+            result = reg[input.rs] + input.operand_or_offset
+            if not self.check_overflow(result):
+                reg[input.rt] = result
 
         def _addiu(input: MipsCommandI):
             reg[input.rt] = input.rs + input.operand_or_offset
@@ -129,45 +134,47 @@ class MipsSimulator:
         def _xori(input: MipsCommandI):
             reg[input.rt] = reg[input.rs] ^ input.operand_or_offset
 
-        def _lui(input: MipsCommandI):
-            reg[input.rt] = input.rs << 16
-
         def _slti(input: MipsCommandI):
             reg[input.rt] = 1 if reg[input.rs] < input.operand_or_offset else 0
 
-        def _lw(input: MipsCommandI):
-            reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
+        def _lui(input: MipsCommandI): pass
+        #     reg[input.rt] = input.rs << 16
 
-        def _sw(input: MipsCommandI):
-            self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
+        def _lw(input: MipsCommandI): pass
+        #     reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
 
-        def _bltz(input: MipsCommandI):
-            if input.rs < 0:
-                reg['pc'] += input.operand_or_offset << 2
+        def _sw(input: MipsCommandI): pass
+        #     self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
 
-        def _beq(input: MipsCommandI):
-            if reg[input.rs] == reg[input.rt]:
-                reg['pc'] += input.operand_or_offset << 2
+        def _bltz(input: MipsCommandI): pass
+        #     if input.rs < 0:
+        #         reg['pc'] += input.operand_or_offset << 2
 
-        def _bne(input: MipsCommandI):
-            if reg[input.rs] != reg[input.rt]:
-                reg['pc'] += input.operand_or_offset << 2
+        def _beq(input: MipsCommandI): pass
+        #     if reg[input.rs] == reg[input.rt]:
+        #         reg['pc'] += input.operand_or_offset << 2
 
-        def _lb(input: MipsCommandI):
-            reg[input.rt] = self.mem[input.rs + input.operand_or_offset] 
+        def _bne(input: MipsCommandI): pass
+        #     if reg[input.rs] != reg[input.rt]:
+        #         reg['pc'] += input.operand_or_offset << 2
 
-        def _lbu(input: MipsCommandI):
-            reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
+        def _lb(input: MipsCommandI): pass
+        #     reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
 
-        def _sb(input: MipsCommandI):
-            self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
+        def _lbu(input: MipsCommandI): pass
+        #     reg[input.rt] = self.mem[input.rs + input.operand_or_offset]
+
+        def _sb(input: MipsCommandI): pass
+        #     self.mem[input.rt] = self.reg[input.rs + input.operand_or_offset]
 
         # J type
+
+        def _j(input: MipsCommandJ): pass
+        #     pass
         
-        def _jal(input: MipsCommandJ):
-            pass
-        def _j(input: MipsCommandJ):
-            pass
+        def _jal(input: MipsCommandJ): pass
+        #     reg[31] = reg['pc'] + 4
+        #     reg['pc'] = input.rs
 
         def _syscall(input):
             if self.reg[2] == 1: # print integer
@@ -198,15 +205,17 @@ class MipsSimulator:
             instruction = self.decode_instruction(instruction)
             self.hist.append(instruction)
             self.functions['_'+instruction.name](instruction)
+
             if debug:
                 info.append({
-                    'hex': instruction.hex, 
+                    'hex': instruction.hex,
                     'text': str(instruction),
                     'mem': self.mem,
                     'regs': self.reg.dict,
                     'stdout': self.stdout
                 })
         return info
+
     def __call__(self, input: Dict, debug=False) -> List[Dict]:
         config = input.get('config', None)
         if config:

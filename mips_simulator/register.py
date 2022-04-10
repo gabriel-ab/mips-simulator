@@ -3,7 +3,7 @@ from typing import Literal
 from mips_simulator import constants
 
 class Register:
-    def __init__(self, id_type: Literal['named', 'numeric'] = 'numeric'):
+    def __init__(self):
         self.map = {reg:i for i, reg in enumerate(constants.REGS)}
         self.buffer = array.array('l', [0]*35)
         self.buffer[28] = 0x10008000 # gp
@@ -25,5 +25,5 @@ class Register:
     @property
     def dict(self):
         result = {f'${i}': value for i, value in enumerate(self.buffer[:-3]) if value != 0}
-        result.update(pc=self.pc, hi=self.hi, lo=self.lo)
+        result.update(pc=self['pc'], hi=self['hi'], lo=self['lo'])
         return result
