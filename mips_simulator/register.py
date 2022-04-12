@@ -1,5 +1,4 @@
 import array
-from typing import Literal
 from mips_simulator import constants
 
 class Register:
